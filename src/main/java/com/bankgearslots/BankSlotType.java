@@ -6,7 +6,9 @@ import java.awt.Composite;
 import java.awt.Graphics2D;
 import java.awt.Rectangle;
 import java.awt.image.BufferedImage;
+import java.util.HashMap;
 import java.util.Locale;
+import java.util.Map;
 import net.runelite.client.util.ImageUtil;
 
 enum BankSlotType
@@ -25,11 +27,14 @@ enum BankSlotType
 	AMMUNITION("ammunition", "Ammunition", "Ammo_slot.png"),
 	EMPTY_SLOT("empty_slot", "Empty Slot", "empty.png");
 
+	private static final float MAX_TINT_STRENGTH = 0.70f;
+
 	private final String configKey;
 	private final String displayName;
 	private final String textureResource;
 	private boolean textureLoadAttempted;
 	private BufferedImage texture;
+	private final Map<Integer, BufferedImage> tintedTextures = new HashMap<>();
 
 	BankSlotType(String configKey, String displayName, String textureResource)
 	{
@@ -108,20 +113,51 @@ enum BankSlotType
 
 	private BufferedImage tintedTexture(BufferedImage image, Color tint)
 	{
+		int tintKey = tint.getRGB();
+		BufferedImage cached = tintedTextures.get(tintKey);
+		if (cached != null)
+		{
+			return cached;
+		}
+
 		BufferedImage tinted = new BufferedImage(image.getWidth(), image.getHeight(), BufferedImage.TYPE_INT_ARGB);
-		Graphics2D tintedGraphics = tinted.createGraphics();
-		try
+		for (int y = 0; y < image.getHeight(); y++)
 		{
-			tintedGraphics.drawImage(image, 0, 0, null);
-			tintedGraphics.setComposite(AlphaComposite.SrcAtop);
-			tintedGraphics.setColor(tint);
-			tintedGraphics.fillRect(0, 0, image.getWidth(), image.getHeight());
+			for (int x = 0; x < image.getWidth(); x++)
+			{
+				tinted.setRGB(x, y, tintPixel(image.getRGB(x, y), tint));
+			}
 		}
-		finally
-		{
-			tintedGraphics.dispose();
-		}
+		tintedTextures.put(tintKey, tinted);
 		return tinted;
+	}
+
+	static int tintPixel(int argb, Color tint)
+	{
+		int alpha = argb >>> 24;
+		if (alpha == 0 || tint == null || tint.getAlpha() == 0)
+		{
+			return argb;
+		}
+
+		float strength = tint.getAlpha() / 255.0f * MAX_TINT_STRENGTH;
+		int red = (argb >>> 16) & 0xFF;
+		int green = (argb >>> 8) & 0xFF;
+		int blue = argb & 0xFF;
+
+		int tintedRed = red * tint.getRed() / 255;
+		int tintedGreen = green * tint.getGreen() / 255;
+		int tintedBlue = blue * tint.getBlue() / 255;
+
+		return alpha << 24
+			| blendChannel(red, tintedRed, strength) << 16
+			| blendChannel(green, tintedGreen, strength) << 8
+			| blendChannel(blue, tintedBlue, strength);
+	}
+
+	private static int blendChannel(int source, int tinted, float strength)
+	{
+		return Math.max(0, Math.min(255, Math.round(source + (tinted - source) * strength)));
 	}
 
 	private void drawTexture(Graphics2D graphics, Rectangle bounds, BufferedImage image, int textureSize, int alpha)
