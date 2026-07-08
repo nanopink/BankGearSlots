@@ -1,6 +1,6 @@
 # Bank Gear Slots
 
-Adds equipment slot textures to your bank with ease!
+Adds equipment slot textures to bank and tags tabs
 
 [![Bank Gear Slots demo](https://img.youtube.com/vi/ttTm4U9lT4k/hqdefault.jpg)](https://www.youtube.com/watch?v=ttTm4U9lT4k)
 
@@ -33,8 +33,6 @@ farming:*:none                           Removes all slots in the farming tags t
 
 `BANK_0` is the All tab. `BANK_1` is the first custom bank tab, `BANK_2` is the second custom bank tab, and so on.
 
-`BANK_n` cells are local to that tab. In the all-bank view, each bank tab section renders with its own local cell numbers.
-
 # Cells
 
 Cell numbers start at `0`.
@@ -56,5 +54,3 @@ head, cape, neck, weapon, two_handed, body, shield, legs, hands, feet, ring, amm
 ```
 
 Assigned cells render as `empty_slot` while they contain a real bank item. While dragging that item, the assigned slot texture is shown again.
-
-Invalid lines are ignored by the plugin and left unchanged in `Slots`.
