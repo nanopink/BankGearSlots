@@ -27,7 +27,7 @@ enum BankSlotType
 	AMMUNITION("ammunition", "Ammunition", "Ammo_slot.png"),
 	EMPTY_SLOT("empty_slot", "Empty Slot", "empty.png");
 
-	private static final float MAX_TINT_STRENGTH = 0.70f;
+	private static final float TINT_LIGHTNESS_INFLUENCE = 0.50f;
 
 	private final String configKey;
 	private final String displayName;
@@ -140,24 +140,119 @@ enum BankSlotType
 			return argb;
 		}
 
-		float strength = tint.getAlpha() / 255.0f * MAX_TINT_STRENGTH;
 		int red = (argb >>> 16) & 0xFF;
 		int green = (argb >>> 8) & 0xFF;
 		int blue = argb & 0xFF;
-
-		int tintedRed = red * tint.getRed() / 255;
-		int tintedGreen = green * tint.getGreen() / 255;
-		int tintedBlue = blue * tint.getBlue() / 255;
+		float[] tintHsl = rgbToHsl(tint.getRed(), tint.getGreen(), tint.getBlue());
+		float[] sourceHsl = rgbToHsl(red, green, blue);
+		int colorized = hslToRgb(tintHsl[0], tintHsl[1], tintLightness(sourceHsl[2], tintHsl[2]));
+		float strength = tint.getAlpha() / 255.0f;
 
 		return alpha << 24
-			| blendChannel(red, tintedRed, strength) << 16
-			| blendChannel(green, tintedGreen, strength) << 8
-			| blendChannel(blue, tintedBlue, strength);
+			| blendChannel(red, (colorized >>> 16) & 0xFF, strength) << 16
+			| blendChannel(green, (colorized >>> 8) & 0xFF, strength) << 8
+			| blendChannel(blue, colorized & 0xFF, strength);
 	}
 
 	private static int blendChannel(int source, int tinted, float strength)
 	{
 		return Math.max(0, Math.min(255, Math.round(source + (tinted - source) * strength)));
+	}
+
+	private static float tintLightness(float sourceLightness, float tintLightness)
+	{
+		float shift = (tintLightness - 0.5f) * 2.0f * TINT_LIGHTNESS_INFLUENCE;
+		if (shift >= 0.0f)
+		{
+			return sourceLightness + (1.0f - sourceLightness) * shift;
+		}
+		return sourceLightness * (1.0f + shift);
+	}
+
+	private static float[] rgbToHsl(int red, int green, int blue)
+	{
+		float r = red / 255.0f;
+		float g = green / 255.0f;
+		float b = blue / 255.0f;
+		float max = Math.max(r, Math.max(g, b));
+		float min = Math.min(r, Math.min(g, b));
+		float lightness = (max + min) / 2.0f;
+		float delta = max - min;
+		if (delta == 0.0f)
+		{
+			return new float[] {0.0f, 0.0f, lightness};
+		}
+
+		float hue;
+		if (max == r)
+		{
+			hue = 60.0f * (((g - b) / delta) % 6.0f);
+		}
+		else if (max == g)
+		{
+			hue = 60.0f * (((b - r) / delta) + 2.0f);
+		}
+		else
+		{
+			hue = 60.0f * (((r - g) / delta) + 4.0f);
+		}
+		if (hue < 0.0f)
+		{
+			hue += 360.0f;
+		}
+
+		float saturation = delta / (1.0f - Math.abs(2.0f * lightness - 1.0f));
+		return new float[] {hue, saturation, lightness};
+	}
+
+	private static int hslToRgb(float hue, float saturation, float lightness)
+	{
+		float chroma = (1.0f - Math.abs(2.0f * lightness - 1.0f)) * saturation;
+		float h = hue / 60.0f;
+		float x = chroma * (1.0f - Math.abs(h % 2.0f - 1.0f));
+		float r = 0.0f;
+		float g = 0.0f;
+		float b = 0.0f;
+		if (h < 1.0f)
+		{
+			r = chroma;
+			g = x;
+		}
+		else if (h < 2.0f)
+		{
+			r = x;
+			g = chroma;
+		}
+		else if (h < 3.0f)
+		{
+			g = chroma;
+			b = x;
+		}
+		else if (h < 4.0f)
+		{
+			g = x;
+			b = chroma;
+		}
+		else if (h < 5.0f)
+		{
+			r = x;
+			b = chroma;
+		}
+		else
+		{
+			r = chroma;
+			b = x;
+		}
+
+		float match = lightness - chroma / 2.0f;
+		return toChannel(r + match) << 16
+			| toChannel(g + match) << 8
+			| toChannel(b + match);
+	}
+
+	private static int toChannel(float value)
+	{
+		return Math.max(0, Math.min(255, Math.round(value * 255.0f)));
 	}
 
 	private void drawTexture(Graphics2D graphics, Rectangle bounds, BufferedImage image, int textureSize, int alpha)

@@ -10,13 +10,29 @@ public class BankSlotTypeTest
 	@Test
 	public void blackTintPreservesTextureBrightnessDifferences()
 	{
-		int dark = BankSlotType.tintPixel(new Color(80, 80, 80, 180).getRGB(), Color.BLACK);
-		int bright = BankSlotType.tintPixel(new Color(200, 200, 200, 180).getRGB(), Color.BLACK);
+		int dark = BankSlotType.tintPixel(new Color(80, 80, 80, 180).getRGB(), new Color(0, 0, 0, 255));
+		int bright = BankSlotType.tintPixel(new Color(200, 200, 200, 180).getRGB(), new Color(0, 0, 0, 255));
 
 		assertEquals(180, alpha(dark));
 		assertEquals(180, alpha(bright));
-		assertTrue(red(dark) > 0);
+		assertTrue(red(dark) < 80);
 		assertTrue(red(bright) > red(dark));
+		assertEquals(red(dark), green(dark));
+		assertEquals(green(dark), blue(dark));
+	}
+
+	@Test
+	public void whiteTintBrightensWhilePreservingTextureBrightnessDifferences()
+	{
+		int dark = BankSlotType.tintPixel(new Color(80, 80, 80, 180).getRGB(), Color.WHITE);
+		int bright = BankSlotType.tintPixel(new Color(200, 200, 200, 180).getRGB(), Color.WHITE);
+
+		assertEquals(180, alpha(dark));
+		assertEquals(180, alpha(bright));
+		assertTrue(red(dark) > 80);
+		assertTrue(red(bright) > red(dark));
+		assertEquals(red(dark), green(dark));
+		assertEquals(green(dark), blue(dark));
 	}
 
 	@Test
@@ -35,7 +51,30 @@ public class BankSlotTypeTest
 
 		assertEquals(123, alpha(tinted));
 		assertTrue(red(tinted) > green(tinted));
-		assertTrue(green(tinted) > 0);
+		assertEquals(green(tinted), blue(tinted));
+	}
+
+	@Test
+	public void fullBlueTintDoesNotFlattenTextureIntoPureBlue()
+	{
+		int dark = BankSlotType.tintPixel(new Color(80, 80, 80, 255).getRGB(), Color.BLUE);
+		int bright = BankSlotType.tintPixel(new Color(200, 200, 200, 255).getRGB(), Color.BLUE);
+
+		assertTrue(blue(bright) > blue(dark));
+		assertTrue(blue(dark) > red(dark));
+		assertTrue(blue(dark) > green(dark));
+		assertTrue(blue(dark) < 255);
+		assertTrue(bright != dark);
+	}
+
+	@Test
+	public void partialTintBlendsBetweenSourceAndColorizedTexture()
+	{
+		int source = new Color(120, 120, 120, 255).getRGB();
+		int tinted = BankSlotType.tintPixel(source, new Color(0, 0, 255, 128));
+
+		assertTrue(blue(tinted) > red(tinted));
+		assertTrue(red(tinted) > 0);
 	}
 
 	private static int alpha(int argb)
@@ -51,5 +90,10 @@ public class BankSlotTypeTest
 	private static int green(int argb)
 	{
 		return (argb >>> 8) & 0xFF;
+	}
+
+	private static int blue(int argb)
+	{
+		return argb & 0xFF;
 	}
 }
