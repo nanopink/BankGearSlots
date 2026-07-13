@@ -147,7 +147,7 @@ public class BankGearSlotsPlugin extends Plugin
 
 		BankSlotStyle current = BankSlotRule.resolve(rules, target);
 		MenuEntry parent = client.createMenuEntry(-2)
-			.setOption("Add Slot")
+			.setOption(getSlotMenuOption(current))
 			.setTarget("")
 			.setType(MenuAction.RUNELITE);
 		Menu submenu = parent.createSubMenu();
@@ -242,6 +242,11 @@ public class BankGearSlotsPlugin extends Plugin
 	static boolean isRealBankItemId(int itemId)
 	{
 		return itemId > 0 && itemId != ItemID.BANK_FILLER;
+	}
+
+	static String getSlotMenuOption(BankSlotStyle current)
+	{
+		return current == null ? "Add Slot" : "Modify Slot";
 	}
 
 	private void loadRules(String slots)
@@ -609,7 +614,8 @@ public class BankGearSlotsPlugin extends Plugin
 		}
 
 		Item[] items = itemContainer.getItems();
-		int offset = Math.max(0, itemContainer.count() - totalConfiguredBankTabItems());
+		// Native bank storage starts with custom-tab segments; un-tabbed items follow them.
+		int offset = 0;
 		for (int i = 0; i < BANK_TAB_VARBITS.length; i++)
 		{
 			int count = Math.max(0, client.getVarbitValue(BANK_TAB_VARBITS[i]));
@@ -622,16 +628,6 @@ public class BankGearSlotsPlugin extends Plugin
 			offset += count;
 		}
 		return signatures;
-	}
-
-	private int totalConfiguredBankTabItems()
-	{
-		int total = 0;
-		for (int bankTabVarbit : BANK_TAB_VARBITS)
-		{
-			total += Math.max(0, client.getVarbitValue(bankTabVarbit));
-		}
-		return total;
 	}
 
 	private static List<Long> itemSignature(Item[] items, int offset, int count)
@@ -1008,20 +1004,9 @@ public class BankGearSlotsPlugin extends Plugin
 			return new BankSlotTarget("BANK_0", cell, false, 0);
 		}
 
-		int totalTabbedItems = 0;
-		for (int count : counts)
-		{
-			totalTabbedItems += Math.max(0, count);
-		}
-
+		// Widget children keep native storage order in the All view even though the game
+		// visually moves the un-tabbed section above the custom-tab sections.
 		int offset = 0;
-		int mainTabItems = Math.max(0, bankItemCount - totalTabbedItems);
-		if (cell < mainTabItems)
-		{
-			return new BankSlotTarget("BANK_0", cell, false, 0);
-		}
-		offset += mainTabItems;
-
 		for (int i = 0; i < counts.length; i++)
 		{
 			int remainingItems = bankItemCount - offset;
@@ -1038,6 +1023,8 @@ public class BankGearSlotsPlugin extends Plugin
 			offset += tabItems;
 		}
 
-		return null;
+		return cell < bankItemCount
+			? new BankSlotTarget("BANK_0", cell - offset, false, 0)
+			: null;
 	}
 }

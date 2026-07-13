@@ -62,6 +62,13 @@ public class BankGearSlotsPluginBehaviorTest
 	}
 
 	@Test
+	public void labelsAssignedCellsAsModifySlot()
+	{
+		assertEquals("Add Slot", BankGearSlotsPlugin.getSlotMenuOption(null));
+		assertEquals("Modify Slot", BankGearSlotsPlugin.getSlotMenuOption(BankSlotStyle.of(BankSlotType.HEAD)));
+	}
+
+	@Test
 	public void removesBankTagsValueSuffixFromActiveTagName()
 	{
 		assertEquals("herblore", BankGearSlotsPlugin.normalizeActiveTagName("herblore (158k)"));
@@ -267,12 +274,27 @@ public class BankGearSlotsPluginBehaviorTest
 	{
 		int[] tabCounts = {2, 3, 0, 0, 0, 0, 0, 0, 0};
 
-		assertTarget("BANK_0", 0, 0, BankGearSlotsPlugin.resolveBankTarget(0, 0, 9, tabCounts));
-		assertTarget("BANK_0", 3, 0, BankGearSlotsPlugin.resolveBankTarget(0, 3, 9, tabCounts));
-		assertTarget("BANK_1", 0, 1, BankGearSlotsPlugin.resolveBankTarget(0, 4, 9, tabCounts));
-		assertTarget("BANK_1", 1, 1, BankGearSlotsPlugin.resolveBankTarget(0, 5, 9, tabCounts));
-		assertTarget("BANK_2", 0, 2, BankGearSlotsPlugin.resolveBankTarget(0, 6, 9, tabCounts));
-		assertTarget("BANK_2", 2, 2, BankGearSlotsPlugin.resolveBankTarget(0, 8, 9, tabCounts));
+		assertTarget("BANK_1", 0, 1, BankGearSlotsPlugin.resolveBankTarget(0, 0, 9, tabCounts));
+		assertTarget("BANK_1", 1, 1, BankGearSlotsPlugin.resolveBankTarget(0, 1, 9, tabCounts));
+		assertTarget("BANK_2", 0, 2, BankGearSlotsPlugin.resolveBankTarget(0, 2, 9, tabCounts));
+		assertTarget("BANK_2", 2, 2, BankGearSlotsPlugin.resolveBankTarget(0, 4, 9, tabCounts));
+		assertTarget("BANK_0", 0, 0, BankGearSlotsPlugin.resolveBankTarget(0, 5, 9, tabCounts));
+		assertTarget("BANK_0", 3, 0, BankGearSlotsPlugin.resolveBankTarget(0, 8, 9, tabCounts));
+	}
+
+	@Test
+	public void allBankViewKeepsCustomTabSlotsInTheirOwningSection()
+	{
+		int[] tabCounts = {2, 3, 4, 0, 0, 0, 0, 0, 0};
+		List<BankSlotRule> rules = BankSlotRule.parseRules("BANK_3:2:cape");
+
+		BankSlotTarget tabTarget = BankGearSlotsPlugin.resolveBankTarget(0, 7, 14, tabCounts);
+		BankSlotTarget unsortedTarget = BankGearSlotsPlugin.resolveBankTarget(0, 12, 14, tabCounts);
+
+		assertTarget("BANK_3", 2, 3, tabTarget);
+		assertEquals(BankSlotType.CAPE, resolveType(rules, tabTarget));
+		assertTarget("BANK_0", 3, 0, unsortedTarget);
+		assertNull(resolveType(rules, unsortedTarget));
 	}
 
 	@Test
